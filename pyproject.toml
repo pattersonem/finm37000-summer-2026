@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="finm37000-summer-2026"
-version="0.1.0"
+version="0.1.1"
 authors = [
     { name="Eric Patterson", email="ericpatterson11@gmail.com" },
 ]
@@ -80,7 +80,11 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+markers = [
+    "db: Mark tests as requiring databento access. Slow and skipped by default."
+]
 addopts = [
+    "-m not db ",
     "--import-mode=importlib",
     "--doctest-modules",
     "--strict-markers", 
