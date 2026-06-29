@@ -5,6 +5,8 @@ import datetime
 import databento as db
 import pandas as pd
 
+from finm37000.time import us_business_day
+
 favorite_def_cols = [
     "instrument_id",
     "raw_symbol",
@@ -54,12 +56,12 @@ def get_official_stats(raw_stats: pd.DataFrame, def_df: pd.DataFrame) -> pd.Data
     stats_df["Open interest"] = stats_df[
         stats_df["stat_type"] == db.StatType.OPEN_INTEREST
     ]["quantity"]
-    stats_df = (
+    last_df = (
         stats_df.groupby(["Trade date", "Symbol"])
         .agg("last")
         .sort_values(["Trade date", "expiration"])
     )
-    return stats_df[
+    return last_df[
         ["Settlement price", "Cleared volume", "Open interest", "expiration"]
     ]
 
@@ -97,11 +99,17 @@ def get_all_legs_on(
     )
     leg_defs = filter_legs(all_defs.to_df())
     legs = leg_defs["raw_symbol"].unique()
+    # Some stats do not arrive on the same day, then due to
+    # date rounding, one day is not enough.
+    next_bday = (date + 2 * us_business_day).to_pydatetime().date()
     raw_stats = client.timeseries.get_range(
         dataset="GLBX.MDP3",
         schema="statistics",
         symbols=legs,
         start=date,
+        end=next_bday,
     )
-    stats = get_official_stats(raw_stats.to_df(), leg_defs.reset_index())
+    raw_df = raw_stats.to_df()
+    raw_same_day = raw_df[raw_df["ts_ref"].dt.date == date]
+    stats = get_official_stats(raw_same_day, leg_defs.reset_index())
     return stats, leg_defs
